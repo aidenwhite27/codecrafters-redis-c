@@ -57,7 +57,13 @@ int main() {
 
 	char *pong = "+PONG\r\n";
 	
-	send(client_fd, pong, strlen(pong), 0);
+	char buffer[1024];
+
+	while(read(client_fd, buffer, sizeof(buffer))) {
+		if (strcmp(buffer, "ping")) {
+			send(client_fd, pong, strlen(pong), 0);
+		}
+	}
 	
 	close(server_fd);
 
