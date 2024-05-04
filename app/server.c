@@ -6,7 +6,22 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
 
+void *respond(void *arg) {
+	int client_socket = *(int *)arg;
+
+	char *pong = "+PONG\r\n";
+
+	char buffer[1024];
+
+	while(read(client_socket, buffer, sizeof(buffer))) {
+		if (strcmp(buffer, "ping")) {
+			send(client_socket, pong, strlen(pong), 0);
+		}
+	}
+}
+	
 int main() {
 	// Disable output buffering
 	setbuf(stdout, NULL);
@@ -50,21 +65,28 @@ int main() {
 	}
 	
 	printf("Waiting for a client to connect...\n");
-	client_addr_len = sizeof(client_addr);
-	
-	int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_len);
-	printf("Client connected\n");
 
-	char *pong = "+PONG\r\n";
-	
-	char buffer[1024];
+	pthread_t thread_ids[5];
+	int num_threads = 0;
+	while(1) {
+		client_addr_len = sizeof(client_addr);
+		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, &client_addr_len);
+		printf("Client connected\n");
 
-	while(read(client_fd, buffer, sizeof(buffer))) {
-		if (strcmp(buffer, "ping")) {
-			send(client_fd, pong, strlen(pong), 0);
+		if (pthread_create(&thread_ids[num_threads++], NULL, respond, &client_fd) != 0) {
+			printf("Error while creating thread.\n");
+			return EXIT_FAILURE;
+		}
+
+		if (num_threads >= 5) {
+			for (int i = 0; i < 5; i++) {
+				pthread_join(thread_ids[i], NULL);
+			}
+			
+			num_threads = 0;
 		}
 	}
-	
+
 	close(server_fd);
 
 	return 0;
