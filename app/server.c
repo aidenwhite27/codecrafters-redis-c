@@ -5,6 +5,7 @@
 #include <netinet/ip.h>
 #include <string.h>
 #include <errno.h>
+#include <strings.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -16,8 +17,20 @@ void *respond(void *arg) {
 	char buffer[1024];
 
 	while(read(client_socket, buffer, sizeof(buffer))) {
-		if (strcmp(buffer, "ping")) {
+		char response[1024];
+		strtok(buffer, "\r\n");
+		strtok(NULL, "\r\n");
+		char *command = strtok(NULL, "\r\n");
+		printf("Command %s", command);
+
+		if (strcasecmp(command, "ping") == 0) {
 			send(client_socket, pong, strlen(pong), 0);
+		}
+		if (strcasecmp(command, "echo") == 0) {
+			strtok(NULL, "\r\n");
+			char *arg = strtok(NULL, "\r\n");
+			sprintf(response, "$%ld\r\n%s\r\n", strlen(arg), arg);
+			send(client_socket, response, strlen(response), 0);
 		}
 	}
 }
